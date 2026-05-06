@@ -35,15 +35,17 @@ MODEL_NAMES = [
 TARGET_INFO = {
     "hardness": {
         "title": "Hardness",
-        "ylabel": "Predicted Hardness",
+        "unit": "N",
+        "ylabel": "Predicted Hardness (N)",
         "section": "모델별 평균 예측 Hardness",
         "chart": "모델별 예측 Hardness 비교"
     },
     "volume": {
-        "title": "Volume",
-        "ylabel": "Predicted Volume",
-        "section": "모델별 평균 예측 Volume",
-        "chart": "모델별 예측 Volume 비교"
+        "title": "Specific Volume",
+        "unit": "mL/g",
+        "ylabel": "Predicted Specific Volume (mL/g)",
+        "section": "모델별 평균 예측 Specific Volume",
+        "chart": "모델별 예측 Specific Volume 비교"
     }
 }
 
