@@ -1,0 +1,12 @@
+streamlit
+pandas
+numpy
+joblib
+matplotlib
+scikit-learn
+xgboost
+catboost
+lightgbm
+tensorflow-cpu
+openpyxl
+xlrd
