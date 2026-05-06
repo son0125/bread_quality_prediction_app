@@ -334,7 +334,10 @@ def show_prediction_section(df, target_name):
                 f"""
                 <div class="model-card">
                     <div class="model-name">{row["Model"]}</div>
-                    <div class="pred-value">{row["Mean_Predicted_Value"]:.4f}</div>
+                    <div class="pred-value">
+                        {row["Mean_Predicted_Value"]:.4f}
+                        <span style="font-size:20px; font-weight:700;"> {info["unit"]}</span>
+                    </div>
                     <div class="pred-label">Average predicted {info["title"].lower()}</div>
                 </div>
                 """,
