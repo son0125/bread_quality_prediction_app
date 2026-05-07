@@ -241,7 +241,7 @@ def draw_model_bar_chart(summary_df, target_name):
 
     # y축 여백 추가
     y_min = 0
-    y_max = np.max(pred_values) * 1.18
+    y_max = np.max(pred_values) * 1.30
 
     ax.set_ylim(y_min, y_max)
 
