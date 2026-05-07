@@ -170,6 +170,74 @@ def load_model_bundle(model_name, target_name):
 
     return model, x_scaler, y_scaler
 
+def validate_hsi_data(df, feature_columns, target_title):
+    # 1. 엑셀 파일이 비어 있는 경우
+    if df is None or df.empty:
+        st.error(
+            "올바른 데이터 파일을 업로드하지 않았습니다. "
+            "엑셀 파일에 초분광 스펙트럼 데이터가 포함되어 있는지 확인해주세요."
+        )
+        return None
+
+    # 2. 필요한 HSI 컬럼이 없는 경우
+    missing_cols = [col for col in feature_columns if col not in df.columns]
+
+    if missing_cols:
+        st.error(
+            f"{target_title} 예측을 위한 초분광 스펙트럼 데이터가 올바르게 입력되지 않았습니다. "
+            "필요한 HSI 컬럼이 부족합니다."
+        )
+
+        with st.expander("누락된 컬럼 확인"):
+            st.write(missing_cols)
+
+        return None
+
+    # 필요한 HSI 컬럼만 추출
+    X_raw = df[feature_columns].copy()
+
+    # 완전히 빈 문자열 또는 공백을 NaN으로 처리
+    X_raw = X_raw.replace(r"^\s*$", np.nan, regex=True)
+
+    # 3. 초분광 데이터에 빈칸이 있는 경우
+    if X_raw.isnull().any().any():
+        st.error(
+            f"{target_title} 예측을 위한 초분광 스펙트럼 데이터에 빈칸이 있습니다. "
+            "빈 값을 제거하거나 올바른 숫자 데이터로 입력해주세요."
+        )
+
+        wrong_cols = X_raw.columns[X_raw.isnull().any()].tolist()
+
+        with st.expander("빈칸이 있는 컬럼 확인"):
+            st.write(wrong_cols)
+
+        return None
+
+    # 4. 숫자가 아닌 문자가 들어 있는 경우
+    X_numeric = X_raw.apply(pd.to_numeric, errors="coerce")
+
+    if X_numeric.isnull().any().any():
+        st.error(
+            f"{target_title} 예측을 위한 초분광 스펙트럼 데이터에 숫자가 아닌 값이 포함되어 있습니다. "
+            "초분광 스펙트럼 데이터는 모두 숫자 형태여야 합니다."
+        )
+
+        wrong_cols = X_numeric.columns[X_numeric.isnull().any()].tolist()
+
+        with st.expander("문제가 있는 컬럼 확인"):
+            st.write(wrong_cols)
+
+        return None
+
+    # 무한대 또는 비정상 값 확인
+    if not np.isfinite(X_numeric.values).all():
+        st.error(
+            f"{target_title} 예측을 위한 초분광 스펙트럼 데이터에 비정상적인 값이 포함되어 있습니다. "
+            "무한대 또는 계산 불가능한 값이 있는지 확인해주세요."
+        )
+        return None
+
+    return X_numeric.astype(float)
 
 # =========================
 # Prediction function
@@ -177,6 +245,14 @@ def load_model_bundle(model_name, target_name):
 def predict_target(model_name, target_name, X):
     model, x_scaler, y_scaler = load_model_bundle(model_name, target_name)
 
+    expected_n_features = getattr(x_scaler, "n_features_in_", None)
+
+    if expected_n_features is not None and X.shape[1] != expected_n_features:
+        raise ValueError(
+            f"모델이 요구하는 입력 변수 개수는 {expected_n_features}개인데, "
+            f"업로드된 데이터는 {X.shape[1]}개입니다."
+        )
+    
     X_scaled = x_scaler.transform(X)
 
     if model_name == "CNN":
@@ -294,32 +370,37 @@ def show_prediction_section(df, target_name):
 
     feature_columns = load_feature_columns(target_name)
 
-    missing_cols = [col for col in feature_columns if col not in df.columns]
+    X = validate_hsi_data(
+        df,
+        feature_columns,
+        info["title"]
+    )
 
-    if missing_cols:
-        st.error(f"{info['title']} 예측에 필요한 입력 컬럼이 부족합니다.")
-        st.write("누락된 컬럼:")
-        st.write(missing_cols)
-
-        st.write("모델이 요구하는 입력 컬럼:")
-        st.write(feature_columns)
-
+    if X is None:
         return
-
-    X = df[feature_columns].astype(float)
 
     prediction_summary = []
 
     for model_name in MODEL_NAMES:
-        pred = predict_target(model_name, target_name, X)
+        try:
+            pred = predict_target(model_name, target_name, X)
 
-        prediction_summary.append({
-            "Model": model_name,
-            "Mean_Predicted_Value": np.mean(pred)
-        })
+            prediction_summary.append({
+                "Model": model_name,
+                "Mean_Predicted_Value": np.mean(pred)
+            })
 
-    summary_df = pd.DataFrame(prediction_summary)
+        except Exception as e:
+            st.error(
+                f"{model_name} 모델에서 예측을 수행할 수 없습니다. "
+                "업로드한 초분광 스펙트럼 데이터의 컬럼 수, 컬럼명, 데이터 형식이 "
+                "학습 데이터와 일치하는지 확인해주세요."
+            )
 
+            with st.expander("오류 상세 내용"):
+                st.write(str(e))
+
+            return
     # =========================
     # Prediction table
     # =========================
@@ -428,11 +509,27 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file is not None:
 
-    df = pd.read_excel(uploaded_file)
+    try:
+        df = pd.read_excel(uploaded_file)
+    except Exception:
+        st.error(
+            "엑셀 파일을 읽을 수 없습니다. 올바른 .xlsx 또는 .xls 파일을 업로드해주세요."
+        )
+        st.stop()
+
+    # 완전히 빈 행 제거
+    df = df.dropna(how="all")
+
+    if df.empty:
+        st.error(
+            "업로드한 엑셀 파일에 데이터가 없습니다. "
+            "초분광 스펙트럼 데이터가 포함된 파일을 업로드해주세요."
+        )
+        st.stop()
 
     # 컬럼명을 문자열로 통일
     df.columns = [str(col) for col in df.columns]
-
+    
     sample_count = len(df)
 
     if sample_count > 1:
