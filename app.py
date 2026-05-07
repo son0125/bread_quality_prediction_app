@@ -357,6 +357,9 @@ def draw_model_bar_chart(summary_df, target_name):
 # =========================
 # Display prediction section
 # =========================
+# =========================
+# Display prediction section
+# =========================
 def show_prediction_section(df, target_name):
     info = TARGET_INFO[target_name]
 
@@ -402,14 +405,14 @@ def show_prediction_section(df, target_name):
 
             return
 
-         if summary_df.empty:
-            st.error(
-                f"{info['title']} 예측 결과를 생성하지 못했습니다. "
-                "업로드한 데이터와 모델 파일을 확인해주세요."
-            )
-            return
-    
     summary_df = pd.DataFrame(prediction_summary)
+
+    if summary_df.empty:
+        st.error(
+            f"{info['title']} 예측 결과를 생성하지 못했습니다. "
+            "업로드한 데이터와 모델 파일을 확인해주세요."
+        )
+        return
 
     # =========================
     # Prediction table
@@ -429,7 +432,7 @@ def show_prediction_section(df, target_name):
     table_df = table_df.rename(
         columns={
             "Mean_Predicted_Value": value_col_name
-        }    
+        }
     )
 
     table_df[value_col_name] = table_df[value_col_name].map(lambda x: f"{x:.4f}")
