@@ -433,8 +433,16 @@ if uploaded_file is not None:
     # 컬럼명을 문자열로 통일
     df.columns = [str(col) for col in df.columns]
 
-    tab1, tab2 = st.tabs(["Hardness Prediction", "Volume Prediction"])
+    sample_count = len(df)
 
+    if sample_count > 1:
+        st.info(
+            f"업로드된 데이터는 총 {sample_count}개 샘플입니다. "
+            f"결과는 각 샘플의 예측값을 계산한 후 평균값으로 표시됩니다."
+        )
+
+    tab1, tab2 = st.tabs(["Hardness Prediction", "Volume Prediction"])
+    
     with tab1:
         show_prediction_section(df, "hardness")
 
