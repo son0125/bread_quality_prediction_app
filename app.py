@@ -246,8 +246,14 @@ def draw_model_bar_chart(summary_df, target_name):
     ax.set_ylim(y_min, y_max)
 
     ax.set_ylabel(info["ylabel"], fontsize=20, fontweight="bold")
+    
+    if target_name == "hardness":
+        chart_title = "Hardness - Model Prediction"
+    elif target_name == "volume":
+        chart_title = "Specific Volume - Model Prediction"
+
     ax.set_title(
-        f"Model-wise Predicted {info['title']}",
+        chart_title,
         fontsize=24,
         fontweight="bold",
         pad=20
