@@ -204,8 +204,6 @@ def draw_model_bar_chart(summary_df, target_name):
     model_names = summary_df["Model"].values
     pred_values = summary_df["Mean_Predicted_Value"].values
 
-    mean_value = np.mean(pred_values)
-
     colors = [
         "#4C91D9",
         "#50C878",
@@ -229,24 +227,7 @@ def draw_model_bar_chart(summary_df, target_name):
         width=0.65
     )
 
-    ax.axhline(
-        mean_value,
-        color="gray",
-        linestyle="--",
-        linewidth=2
-    )
-
-    ax.text(
-        len(model_names) - 0.3,
-        mean_value,
-        f"Mean: {mean_value:.2f}",
-        ha="right",
-        va="bottom",
-        fontsize=18,
-        fontweight="bold",
-        color="dimgray"
-    )
-
+    # 막대 위 예측값 표시
     for bar, value in zip(bars, pred_values):
         ax.text(
             bar.get_x() + bar.get_width() / 2,
@@ -257,6 +238,12 @@ def draw_model_bar_chart(summary_df, target_name):
             fontsize=16,
             fontweight="bold"
         )
+
+    # y축 여백 추가
+    y_min = 0
+    y_max = np.max(pred_values) * 1.18
+
+    ax.set_ylim(y_min, y_max)
 
     ax.set_ylabel(info["ylabel"], fontsize=20, fontweight="bold")
     ax.set_title(
@@ -284,7 +271,6 @@ def draw_model_bar_chart(summary_df, target_name):
     fig.tight_layout()
 
     return fig
-
 
 # =========================
 # Display prediction section
