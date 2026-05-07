@@ -401,6 +401,16 @@ def show_prediction_section(df, target_name):
                 st.write(str(e))
 
             return
+
+         if summary_df.empty:
+            st.error(
+                f"{info['title']} 예측 결과를 생성하지 못했습니다. "
+                "업로드한 데이터와 모델 파일을 확인해주세요."
+            )
+            return
+    
+    summary_df = pd.DataFrame(prediction_summary)
+
     # =========================
     # Prediction table
     # =========================
