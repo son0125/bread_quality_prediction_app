@@ -37,15 +37,15 @@ TARGET_INFO = {
         "title": "Hardness",
         "unit": "N",
         "ylabel": "Predicted Hardness (N)",
-        "section": "모델별 평균 예측 Hardness",
-        "chart": "모델별 예측 Hardness 비교"
+        "section": "경도 예측 (Hardness Prediction)",
+        "chart": "모델별 경도 예측값 비교"
     },
     "volume": {
         "title": "Specific Volume",
         "unit": "mL/g",
         "ylabel": "Predicted Specific Volume (mL/g)",
-        "section": "모델별 평균 예측 Specific Volume",
-        "chart": "모델별 예측 Specific Volume 비교"
+        "section": "비체적 예측 (Specific Volume Prediction)",
+        "chart": "모델별 비체적 예측값 비교"
     }
 }
 
@@ -66,6 +66,19 @@ st.markdown(
         font-size: 15px;
         color: #555;
         margin-bottom: 30px;
+    }
+
+    .upload-title {
+        font-size: 18px;
+        font-weight: 700;
+        margin-top: 20px;
+        margin-bottom: 4px;
+    }
+
+    .upload-desc {
+        font-size: 14px;
+        color: #555;
+        margin-bottom: 10px;
     }
 
     .section-title {
@@ -106,6 +119,8 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+
 
 
 # =========================
@@ -314,7 +329,7 @@ def show_prediction_section(df, target_name):
     summary_df = pd.DataFrame(prediction_summary)
 
     # =========================
-    # Prediction cards
+    # Prediction table
     # =========================
     st.markdown(
         f"""
@@ -325,34 +340,61 @@ def show_prediction_section(df, target_name):
         unsafe_allow_html=True
     )
 
-    n_cols = 4
-    cols = st.columns(n_cols)
+    value_col_name = f"{info['title']} ({info['unit']})"
 
-    for idx, row in summary_df.iterrows():
-        with cols[idx % n_cols]:
-            st.markdown(
-                f"""
-                <div class="model-card">
-                    <div class="model-name">{row["Model"]}</div>
-                    <div class="pred-value">
-                        {row["Mean_Predicted_Value"]:.4f}
-                        <span style="font-size:20px; font-weight:700;"> {info["unit"]}</span>
-                    </div>
-                    <div class="pred-label">Average predicted {info["title"].lower()}</div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+    table_df = summary_df.copy()
+    table_df = table_df.rename(
+        columns={
+            "Mean_Predicted_Value": value_col_name
+        }    
+    )
 
-    # =========================
-    # Bar chart
-    # =========================
+    table_df[value_col_name] = table_df[value_col_name].map(lambda x: f"{x:.4f}")
+
     st.markdown(
-        f"""
-        <div class="section-title">
-        {info["chart"]}
-        </div>
+        """
+        <style>
+        .prediction-table {
+            border-collapse: collapse;
+            width: 60%;
+            margin-top: 10px;
+            margin-bottom: 35px;
+            font-size: 20px;
+        }
+
+        .prediction-table th {
+            background-color: #f2f4f8;
+            color: #111;
+            font-weight: 800;
+            text-align: center;
+            padding: 16px;
+            border-bottom: 2px solid #222;
+        }
+
+        .prediction-table td {
+            text-align: center;
+            padding: 15px;
+            border-bottom: 1px solid #d9dee7;
+        }
+
+        .prediction-table tr:nth-child(even) {
+            background-color: #f8f9fb;
+        }
+
+        .prediction-table td:first-child {
+            font-weight: 700;
+        }
+        </style>
         """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+        table_df.to_html(
+            index=False,
+            classes="prediction-table",
+            escape=False
+        ),
         unsafe_allow_html=True
     )
 
@@ -366,21 +408,31 @@ def show_prediction_section(df, target_name):
 st.markdown(
     """
     <div class="main-title">
-    Artificial Intelligence Prediction of Bread Qualities
+    올레오젤 초분광 이미지를 활용한 지방 대체 빵의 품질 예측
     </div>
     <div class="subtitle">
-    Hyperspectral imaging 데이터를 이용하여 빵의 hardness와 volume을 예측하는 모델입니다.
+    Quality Prediction of Fat-Replaced Breads Using Hyperspectral Imaging of Oleogels
     </div>
     """,
     unsafe_allow_html=True
 )
 
 
-uploaded_file = st.file_uploader(
-    "Upload a new hyperspectral image data Excel file",
-    type=["xlsx", "xls"]
+st.markdown(
+    """
+    <div class="upload-title">데이터 파일 업로드</div>
+    <div class="upload-desc">
+    초분광 스펙트럼 데이터 (224 bands, 936–1716.5 nm)
+    </div>
+    """,
+    unsafe_allow_html=True
 )
 
+uploaded_file = st.file_uploader(
+    "데이터 파일 업로드",
+    type=["xlsx", "xls"],
+    label_visibility="collapsed"
+)
 
 if uploaded_file is not None:
 
