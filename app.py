@@ -179,6 +179,11 @@ def validate_hsi_data(df, feature_columns, target_title):
         )
         return None
 
+    # feature column 위치 정보 만들기
+    feature_position = {
+        col: idx + 1 for idx, col in enumerate(feature_columns)
+    }
+
     # 2. 필요한 HSI 컬럼이 없는 경우
     missing_cols = [col for col in feature_columns if col not in df.columns]
 
@@ -188,8 +193,13 @@ def validate_hsi_data(df, feature_columns, target_title):
             "필요한 HSI 컬럼이 부족합니다."
         )
 
-        with st.expander("누락된 컬럼 확인"):
-            st.write(missing_cols)
+        missing_df = pd.DataFrame({
+            "HSI 데이터 순서": [feature_position[col] for col in missing_cols],
+            "누락된 컬럼명": missing_cols
+        })
+
+        st.write("누락된 HSI 컬럼은 아래와 같습니다.")
+        st.dataframe(missing_df, use_container_width=True)
 
         return None
 
@@ -197,44 +207,112 @@ def validate_hsi_data(df, feature_columns, target_title):
     X_raw = df[feature_columns].copy()
 
     # 완전히 빈 문자열 또는 공백을 NaN으로 처리
-    X_raw = X_raw.replace(r"^\s*$", np.nan, regex=True)
+    X_clean = X_raw.replace(r"^\s*$", np.nan, regex=True)
 
-    # 3. 초분광 데이터에 빈칸이 있는 경우
-    if X_raw.isnull().any().any():
+    # =========================
+    # 3. 빈칸이 있는 경우
+    # =========================
+    blank_mask = X_clean.isnull()
+
+    if blank_mask.any().any():
+        issue_rows = []
+
+        blank_positions = np.where(blank_mask.values)
+
+        for row_idx, col_idx in zip(blank_positions[0], blank_positions[1]):
+            col_name = X_clean.columns[col_idx]
+
+            issue_rows.append({
+                "엑셀 행 번호": int(row_idx + 2),  # header가 1행이므로 실제 엑셀 행은 +2
+                "샘플 번호": int(row_idx + 1),
+                "Sample": df["Sample"].iloc[row_idx] if "Sample" in df.columns else "",
+                "HSI 데이터 순서": feature_position[col_name],
+                "컬럼명": col_name,
+                "오류 유형": "빈칸",
+                "입력값": "(blank)"
+            })
+
+        issue_df = pd.DataFrame(issue_rows)
+
         st.error(
             f"{target_title} 예측을 위한 초분광 스펙트럼 데이터에 빈칸이 있습니다. "
-            "빈 값을 제거하거나 올바른 숫자 데이터로 입력해주세요."
+            "아래 위치를 확인한 뒤 값을 입력해주세요."
         )
 
-        wrong_cols = X_raw.columns[X_raw.isnull().any()].tolist()
-
-        with st.expander("빈칸이 있는 컬럼 확인"):
-            st.write(wrong_cols)
+        st.dataframe(issue_df, use_container_width=True)
 
         return None
 
+    # =========================
     # 4. 숫자가 아닌 문자가 들어 있는 경우
-    X_numeric = X_raw.apply(pd.to_numeric, errors="coerce")
+    # =========================
+    X_numeric = X_clean.apply(pd.to_numeric, errors="coerce")
 
-    if X_numeric.isnull().any().any():
+    non_numeric_mask = X_numeric.isnull()
+
+    if non_numeric_mask.any().any():
+        issue_rows = []
+
+        non_numeric_positions = np.where(non_numeric_mask.values)
+
+        for row_idx, col_idx in zip(non_numeric_positions[0], non_numeric_positions[1]):
+            col_name = X_clean.columns[col_idx]
+            input_value = X_raw.iloc[row_idx, col_idx]
+
+            issue_rows.append({
+                "엑셀 행 번호": int(row_idx + 2),
+                "샘플 번호": int(row_idx + 1),
+                "Sample": df["Sample"].iloc[row_idx] if "Sample" in df.columns else "",
+                "HSI 데이터 순서": feature_position[col_name],
+                "컬럼명": col_name,
+                "오류 유형": "숫자가 아닌 값",
+                "입력값": input_value
+            })
+
+        issue_df = pd.DataFrame(issue_rows)
+
         st.error(
             f"{target_title} 예측을 위한 초분광 스펙트럼 데이터에 숫자가 아닌 값이 포함되어 있습니다. "
             "초분광 스펙트럼 데이터는 모두 숫자 형태여야 합니다."
         )
 
-        wrong_cols = X_numeric.columns[X_numeric.isnull().any()].tolist()
-
-        with st.expander("문제가 있는 컬럼 확인"):
-            st.write(wrong_cols)
+        st.dataframe(issue_df, use_container_width=True)
 
         return None
 
-    # 무한대 또는 비정상 값 확인
-    if not np.isfinite(X_numeric.values).all():
+    # =========================
+    # 5. 무한대 또는 비정상 값 확인
+    # =========================
+    finite_mask = np.isfinite(X_numeric.values)
+
+    if not finite_mask.all():
+        issue_rows = []
+
+        bad_positions = np.where(~finite_mask)
+
+        for row_idx, col_idx in zip(bad_positions[0], bad_positions[1]):
+            col_name = X_clean.columns[col_idx]
+            input_value = X_raw.iloc[row_idx, col_idx]
+
+            issue_rows.append({
+                "엑셀 행 번호": int(row_idx + 2),
+                "샘플 번호": int(row_idx + 1),
+                "Sample": df["Sample"].iloc[row_idx] if "Sample" in df.columns else "",
+                "HSI 데이터 순서": feature_position[col_name],
+                "컬럼명": col_name,
+                "오류 유형": "비정상 값",
+                "입력값": input_value
+            })
+
+        issue_df = pd.DataFrame(issue_rows)
+
         st.error(
             f"{target_title} 예측을 위한 초분광 스펙트럼 데이터에 비정상적인 값이 포함되어 있습니다. "
             "무한대 또는 계산 불가능한 값이 있는지 확인해주세요."
         )
+
+        st.dataframe(issue_df, use_container_width=True)
+
         return None
 
     return X_numeric.astype(float)
