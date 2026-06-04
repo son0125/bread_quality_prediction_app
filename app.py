@@ -128,7 +128,9 @@ st.markdown(
 # =========================
 def check_target_files(target_name):
     required_files = [
-        f"feature_columns_{target_name}.pkl"
+        f"feature_columns_{target_name}.pkl",
+        f"x_scaler_{target_name}.pkl",
+        f"y_scaler_{target_name}.pkl"
     ]
 
     for model_name in MODEL_NAMES:
@@ -136,9 +138,6 @@ def check_target_files(target_name):
             required_files.append(f"{model_name}_{target_name}_model.keras")
         else:
             required_files.append(f"{model_name}_{target_name}_model.pkl")
-
-        required_files.append(f"x_scaler_{model_name}_{target_name}.pkl")
-        required_files.append(f"y_scaler_{model_name}_{target_name}.pkl")
 
     missing_files = [file for file in required_files if not Path(file).exists()]
 
@@ -165,8 +164,8 @@ def load_model_bundle(model_name, target_name):
     else:
         model = joblib.load(f"{model_name}_{target_name}_model.pkl")
 
-    x_scaler = joblib.load(f"x_scaler_{model_name}_{target_name}.pkl")
-    y_scaler = joblib.load(f"y_scaler_{model_name}_{target_name}.pkl")
+    x_scaler = joblib.load(f"x_scaler_{target_name}.pkl")
+    y_scaler = joblib.load(f"y_scaler_{target_name}.pkl")
 
     return model, x_scaler, y_scaler
 
